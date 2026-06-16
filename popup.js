@@ -114,19 +114,32 @@ $("createBtn").addEventListener("click", async () => {
     return;
   }
 
-  chrome.tabs.sendMessage(tab.id, { action: "getEmailContent" }, async (response) => {
-    if (chrome.runtime.lastError || !response) {
-      setStatus("Could not read email. Make sure a Copilot review email is open.", "error");
-      $("createBtn").disabled = false;
-      return;
-    }
-    if (response.error) {
-      setStatus(response.error, "error");
-      $("createBtn").disabled = false;
-      return;
-    }
+  let emailData;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const subjectEl = document.querySelector('h2.hP');
+        const bodyEl = document.querySelector('.a3s.aiL');
+        if (!subjectEl || !bodyEl) return null;
+        return { subject: subjectEl.innerText.trim(), body: bodyEl.innerText.trim() };
+      },
+    });
+    emailData = result?.result;
+  } catch (e) {
+    setStatus("Could not access Gmail tab: " + e.message, "error");
+    $("createBtn").disabled = false;
+    return;
+  }
 
-    const { subject, body } = response;
+  if (!emailData) {
+    setStatus("No email found. Click into a Copilot review email so it's fully open, then try again.", "error");
+    $("createBtn").disabled = false;
+    return;
+  }
+
+  {
+    const { subject, body } = emailData;
     setStatus("Creating ticket…");
 
     try {
@@ -144,7 +157,7 @@ $("createBtn").addEventListener("click", async () => {
     }
 
     $("createBtn").disabled = false;
-  });
+  }
 });
 
 init();
