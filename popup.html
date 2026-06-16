@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      width: 320px;
+      padding: 16px;
+      background: #fff;
+      color: #111;
+    }
+    h1 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+    label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; margin-top: 10px; }
+    input, select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .row { display: flex; gap: 6px; margin-top: 4px; }
+    button {
+      flex: 1;
+      padding: 7px 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    #saveKey  { background: #e8e8e8; color: #333; }
+    #createBtn { background: #5e6ad2; color: #fff; margin-top: 12px; width: 100%; }
+    #createBtn:disabled { opacity: 0.5; cursor: default; }
+    #status {
+      margin-top: 10px;
+      font-size: 12px;
+      min-height: 18px;
+      word-break: break-word;
+    }
+    #status.error { color: #c0392b; }
+    #status.success { color: #27ae60; }
+    .spinner { display: inline-block; margin-right: 4px; }
+    a { color: #5e6ad2; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #teamRow { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Copilot Review → Linear</h1>
+
+  <label for="apiKey">Linear API Key</label>
+  <div class="row">
+    <input type="password" id="apiKey" placeholder="lin_api_..." />
+    <button id="saveKey">Save</button>
+  </div>
+
+  <div id="teamRow">
+    <label for="teamSelect">Team</label>
+    <select id="teamSelect"></select>
+  </div>
+
+  <button id="createBtn" disabled>Create Linear Ticket</button>
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

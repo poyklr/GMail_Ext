@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Copilot Review → Linear",
+  "version": "1.0.0",
+  "description": "Create Linear tickets from GitHub Copilot review emails in Gmail",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://api.linear.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Create Linear Ticket"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
