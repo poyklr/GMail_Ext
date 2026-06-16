@@ -1,4 +1,5 @@
 const LINEAR_API = "https://api.linear.app/graphql";
+const ASSIGNEE_EMAIL = "chb@tacticalbusinesspartners.com";
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,16 +35,49 @@ async function fetchTeams(apiKey) {
   return data.teams.nodes;
 }
 
-async function createIssue(apiKey, teamId, title, description) {
+async function fetchAssigneeId(apiKey) {
   const data = await linearQuery(apiKey, `
-    mutation CreateIssue($teamId: String!, $title: String!, $description: String!) {
-      issueCreate(input: { teamId: $teamId, title: $title, description: $description }) {
+    query($email: String!) {
+      users(filter: { email: { eq: $email } }) {
+        nodes { id }
+      }
+    }
+  `, { email: ASSIGNEE_EMAIL });
+  return data.users.nodes[0]?.id ?? null;
+}
+
+async function createIssue(apiKey, teamId, title, description, assigneeId) {
+  const input = { teamId, title, description };
+  if (assigneeId) input.assigneeId = assigneeId;
+  const data = await linearQuery(apiKey, `
+    mutation CreateIssue($input: IssueCreateInput!) {
+      issueCreate(input: $input) {
         success
         issue { url }
       }
     }
-  `, { teamId, title, description });
+  `, { input });
   return data.issueCreate;
+}
+
+// Parses subject "Re: [repo/name] PR title … (PR #N)" into a ticket title.
+function buildTitle(subject) {
+  const repoMatch = subject.match(/\[([^\]]+)\]/);
+  const repo = repoMatch ? repoMatch[1] : null;
+  let prTitle = subject
+    .replace(/^Re:\s*/, "")
+    .replace(/\[[^\]]+\]\s*/, "")
+    .replace(/\s*[…\.]{1,3}\s*\(PR\s*#\d+\)$/, "")
+    .replace(/\s*\(PR\s*#\d+\)$/, "")
+    .trim();
+  return repo ? `Copilot Review Ideas on [${repo}] ${prTitle}` : `Copilot Review Ideas on ${prTitle}`;
+}
+
+// Returns only the content after the "generated N comment(s)" divider, or full body.
+function extractBody(body) {
+  const match = body.match(/changed files in this pull request and generated \d+ comments?\.\n/i);
+  if (match) return body.slice(body.indexOf(match[0]) + match[0].length).trim();
+  return body;
 }
 
 async function loadTeams(apiKey) {
@@ -59,7 +93,6 @@ async function loadTeams(apiKey) {
     select.appendChild(opt);
   });
 
-  // Restore previously selected team
   const { selectedTeam } = await chrome.storage.local.get("selectedTeam");
   if (selectedTeam) select.value = selectedTeam;
 
@@ -138,26 +171,24 @@ $("createBtn").addEventListener("click", async () => {
     return;
   }
 
-  {
-    const { subject, body } = emailData;
-    setStatus("Creating ticket…");
-
-    try {
-      const result = await createIssue(apiKey, teamId, subject, body);
-      if (result.success) {
-        setStatus("", "");
-        const el = $("status");
-        el.innerHTML = `Ticket created: <a href="${result.issue.url}" target="_blank">${result.issue.url}</a>`;
-        el.className = "success";
-      } else {
-        setStatus("Linear returned success=false.", "error");
-      }
-    } catch (e) {
-      setStatus("Error: " + e.message, "error");
+  setStatus("Creating ticket…");
+  try {
+    const title = buildTitle(emailData.subject);
+    const description = extractBody(emailData.body);
+    const assigneeId = await fetchAssigneeId(apiKey);
+    const result = await createIssue(apiKey, teamId, title, description, assigneeId);
+    if (result.success) {
+      const el = $("status");
+      el.innerHTML = `Ticket created: <a href="${result.issue.url}" target="_blank">${result.issue.url}</a>`;
+      el.className = "success";
+    } else {
+      setStatus("Linear returned success=false.", "error");
     }
-
-    $("createBtn").disabled = false;
+  } catch (e) {
+    setStatus("Error: " + e.message, "error");
   }
+
+  $("createBtn").disabled = false;
 });
 
 init();
